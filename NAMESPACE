@@ -1,0 +1,7 @@
+exportPattern("^[[:alpha:]]+")
+import(mice,pscl)
+ importFrom("grDevices", "dev.copy", "dev.off", "pdf")
+ importFrom("graphics", "abline", "axis", "box", "legend", "lines","mtext", "par", "plot", "plot.new", "points", "text")
+ importFrom("stats", "as.formula", "coef", "cov", "na.pass", "predict", "rnorm", "runif", "smooth.spline")
+ importFrom("utils", "tail")
+
