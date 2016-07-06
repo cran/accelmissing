@@ -8,7 +8,7 @@ Select the subjects that have at least 3 complete days (or other criteria). By s
 }
 \usage{
 valid.subjects(data1, data2, valid.days = 3, valid.week.days = NA, 
-valid.weekend.days = NA, mark.missing = 0)
+valid.weekend.days = NA, mark.missing = 0, keep.7days=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -30,6 +30,10 @@ Minimum number of complete weekend days that the subject should have.
   \item{mark.missing}{
 If \code{mark.missing = 0} (default), the nonwearing time is marked by 0 while the wearing time is marked by 1 in flag matrix. If \code{mark.missing = 1}, it is the opposite.
 }
+\item{keep.7days}{
+If \code{keep.7days = TRUE} (default), include all 7 days for a valid subject although some days are incomplete. If \code{FALSE}, the dataset only includes valid days of valid subjects.
+}
+
 } % argument
 \value{
 List with the updated PA, label and flag matrix objects.

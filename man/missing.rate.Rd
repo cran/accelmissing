@@ -27,7 +27,9 @@ Define the time range during which the missing rate is computed. Default is 9am-
 \value{
 Numeric value of a missing rate between 0 to 1. The output is a list of 
 \item{total}{total missing rate during the time range}
-\item{table}{missing rate table by subject}
+\item{table}{missing rate on days by subject}
+\item{table.wh}{wearing hours on days by subject}
+\item{label}{wearing hours by subject id and day, same information as table.wh but different data frame}
 }
 \references{
 [1] Lee JA, Gill J (2016). Missing value imputation for physical activity data measured by accelerometer. Statistical Methods in Medical Research.

@@ -1,9 +1,15 @@
+# update:
+# 05/14/2016: missing.rate - fix the table allowing NA for 7 days
+# 05/21/2016: valid.subjects - keep.7days=TRUE/FALSE arguement is included 
+# 05/23/2016: missing.rate - translate the missing rate to wearing hours, and create more outputs (table.wh, label)
+# 07/05/2016: accel.impute - add demo.include=TRUE/FALSE argument
+
 ########################################################
 # accel.impute() performs multiple imputations for accelerometer data
 # input: PA, label, flag, demo
 # output: multiple datasets with imputations (m=5 as a default)
 ########################################################
-accel.impute <- function(PA, label, flag, demo, method="zipln", time.range=c("09:00","20:59"),  K=3, D=5, mark.missing=0, thresh=10000, graph.diagnostic=TRUE,  seed=1234, m=5, maxit=6 ){
+accel.impute <- function(PA, label, flag, demo=NA, method="zipln", time.range=c("09:00","20:59"),  K=3, D=5, mark.missing=0, thresh=10000, graph.diagnostic=TRUE,  seed=1234, m=5, maxit=6, demo.include=FALSE ){
 
  # wearing/nonwearing mark
 	nw = mark.missing
@@ -15,18 +21,35 @@ accel.impute <- function(PA, label, flag, demo, method="zipln", time.range=c("09
 # preliminary
  	daytime = which(min.seq==time.range[1]):which(min.seq==time.range[2])
  	PA[PA>=thresh] = thresh  # it might be done in previous steps, just in case
-# create x matrix 
+
+# Would you like to include the demographic data?
 	# note: demo is the demographic data by subject
-	nday = length(unique(label[, 2])) # num of days per subject - 7 or 14 days
-	demo.daily = data.frame(matrix(0, nday*nrow(demo), ncol(demo)))
-	if ( nrow(PA)!=nrow(demo.daily)) {stop("Dimension does not match! Please check the demographic data.")}
-	for (i in 1:ncol(demo)) demo.daily[, i] = rep(demo[, i], each=7)
-	colnames(demo.daily) = colnames(demo)
-	# include the variable of weekday=1 , weekend=0
+	if (!demo.include)	demo=NA    # demo=NA if demo.include=FALSE 
+	
+	if (demo.include){#----------------------------------------------
+			if ( is.null(nrow(demo)) ) {demo.include=FALSE }else{ ###@@@
+			nday = length(unique(label[, 2])) # num of days per subject - 7 or 14 days
+			demo.daily = data.frame(matrix(0, nday*nrow(demo), ncol(demo)))
+			for (i in 1:ncol(demo)) demo.daily[, i] = rep(demo[, i], each=nday)
+			colnames(demo.daily) = colnames(demo)
+			# error messages: 
+			if ( nrow(PA)!=nrow(demo.daily)) {stop("Dimension does not match! Please check the demographic data.")}
+			if ( sum(is.na(demo)) != 0) {stop("There are missing values (NA) in demo. Imputation is needed, otherwise set 'demo.include=FALSE'.")}
+			}###@@@
+	} #--------------------------------------------------------------------
+	
+	
+	# create the variable of weekday=1 , weekend=0
 	daylabel=label[, 2]  # l=Sunday,...,7=Saturday
 	wk = ifelse((daylabel%%7)>=2, 1, 0) ; wk = as.factor(wk)    # weekday=1, weekend=0
 	# time invariant X matrix
-	xmat = data.frame(demo.daily[, -1], wk) 
+
+# create x matrix 	
+	if (demo.include){ 
+			xmat = data.frame(demo.daily[, -1], wk) 
+			}else{
+			xmat = data.frame(wk)	
+			}
  # packages 
 	#require(mice);  if (!require(mice)) {stop("mice package must be installed.")}	
 	#require(pscl);   if (!require(pscl)) {stop("pscl package must be installed.")}	
@@ -46,7 +69,7 @@ accel.impute <- function(PA, label, flag, demo, method="zipln", time.range=c("09
 		}else{ cd.y0 = cd.y1 } # update 	
 	y1 =PA[, t1]
 	r1 =(flag[, t1]==w)   # wearing=T, missing=F
-	y1[!r1] = NA
+	y1[!r1] = NA			# missing to NA
 	icd.y1 = data.frame(y1, ln.y0 = log(cd.y0+1), xmat) # (L1 L1)	
 	imp.y1 = mice(icd.y1, seed=seed, method="2l.zip.pmm", maxit=maxit, m=1, printFlag=FALSE)
 	cd.y1 = complete(imp.y1)$y1 # one complete data of y1
@@ -392,24 +415,31 @@ return(impvec)
 	# time range
 		duration = which(min.seq==time.range[1]):which(min.seq==time.range[2])
 	# total missing rate 
-		flag.duration = flag[ ,duration]
+		flag.duration = flag[ , duration]
 		total = round(mean(flag.duration==nw), 3)
 		totalper = total*100
 		print(paste("Total missing rate during ",time.range[1],"-" ,time.range[2]," is " , total, "(", totalper ,"%)", sep="" ) )
 	# missing rate table by subject
 		nsubject = length(unique(label[,1]))
-		nday = length(unique(label[,2]))
-		mrate = matrix(0, nsubject, nday)
+		mrate.7d = matrix(NA, nsubject, 7)
 		for (i in 1:nsubject){ # ------(*)
 			personi = unique(label[,1])[i]
+			dayjs = as.numeric(label[label[,1] == personi, 2])
 			flagi = flag.duration[label[,1] == personi, ]
-			mrate[i, ] = round(apply(flagi==nw, 1, mean),3)
+			if (length(dayjs)==1) flagi = t(as.matrix(flagi))
+			mrate.7d[i, dayjs] = apply(flagi==nw, 1, mean)
 		}#----------(*)
-		colnames(mrate) =1:nday
-		rownames(mrate) = unique(label[,1])
-
-	return(list(total=total, table=mrate))
- 		
+		colnames(mrate.7d) =1:7
+		rownames(mrate.7d) = unique(label[,1])
+	# compute the missing rate to the wearing hours
+		wh.7d = (1-mrate.7d)*(length(duration)/60)
+	# update the label with wh	
+		mrate.vec = apply(flag.duration==nw, 1, mean)
+		wh.vec = (1-mrate.vec)*(length(duration)/60)
+		label=as.data.frame(label)
+		colnames(label)[1:2] = c("id","day")
+		label$wh = round(matrix(t(wh.vec), nrow(label),1), 3)
+	return(list(total=total, table=round(mrate.7d,3), table.wh=round(wh.7d,3), label=label))
  	}
 #######################################################
 # valid.days() selects the valid days that has sufficient wearing times
@@ -442,7 +472,7 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 		flag.id  = which(flag.sum > wearmin)
 	# update data
 		PA2 = as.matrix(PA[flag.id, ])
-		label2 = as.matrix(label[flag.id,])
+		label2 = label[flag.id,]
 		flag2  = as.matrix(flag[flag.id, ])
 		valid.days.out = list(PA=PA2, label=label2, flag=flag2)
 	# summary
@@ -459,31 +489,27 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 #			 data2- list with PA, label, flag from the output of valid.days
 # output: list with the updated PA, label, and flag			
 ##############################################################
-	valid.subjects <- function(data1, data2, valid.days=3, valid.week.days=NA, valid.weekend.days=NA,  mark.missing=0){
+	valid.subjects <- function(data1, data2, valid.days=3, valid.week.days=NA, valid.weekend.days=NA,  mark.missing=0, keep.7days=TRUE){
 	print("*** Select Data by Subject ***")
 	# wearing/nonwearing mark
 		nw = mark.missing
 		w = abs(1-nw)
-	# time sequence
-		start.time =as.POSIXct("2015-01-01")
-		seq.time = seq.POSIXt(start.time, length.out=1440, by="min")
-		min.seq = format(seq.time,"%H:%M")
-	# label
-		person.label = data2$label[,1]
+	# label by person
+		person.label = data2$label[,1]  # all persons for valid days
 		unique.person.id = unique(person.label)
-	day.label    = data2$label[,2]
-	weekday.label = ( day.label%%7 > 1 )  
-	weekend.label = ( day.label%%7 <= 1 )  
-	person.and.weekday = tapply(weekday.label, person.label, FUN=sum)
-	person.and.weekend = tapply(weekend.label, person.label, FUN=sum)
-	person.and.day = table(person.label)
-	person.and.abc = cbind(unique.person.id, as.numeric(person.and.day), 
-					as.numeric(person.and.weekday), as.numeric(person.and.weekend)  )
-	# check the answer:
-	# all.equal(person.and.abc[,3]+person.and.abc[,4], as.numeric(person.and.day))
-	day.per.person = person.and.abc[,2]
-	weekday.person = person.and.abc[,3]
-	weekend.person = person.and.abc[,4]
+	# valid days per person	 
+		day.per.person = as.numeric(table(person.label)) 
+		summary(day.per.person) # min=1 ~ max=7
+	# separate label for weekend vs. weekand
+		day.label    = data2$label[,2]
+		weekday.label = ( day.label%%7 > 1 )  
+		weekend.label = ( day.label%%7 <= 1 ) 
+	# valid weekday per person	 
+		weekday.person = as.numeric(tapply(weekday.label, person.label, FUN=sum))
+	# valid weekend per person
+		weekend.person = as.numeric(tapply(weekend.label, person.label, FUN=sum))
+	
+	# filtering 
 	#----------------------------------------------
 	if ( (length(valid.days)==0) || 
 		 (is.na(valid.days)&is.na(valid.week.days)&is.na(valid.weekend.days)) ){
@@ -527,21 +553,32 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 		}	
 	#-----------------------------------------		
 	N.person = length(keep.person.id)  
-	#-----------------------------------------	
-	all.person.label = data1$label[,1]
-	keep.data.id = c()
-		for ( j in 1:N.person )  {   # ------------- (1)
-			k = keep.person.id[j]   #; print(k)
-			keep.which = which(all.person.label==k) #; print(keep.which)
-			keep.data.id = c(keep.data.id, keep.which)	
-		}   #--------------------------(1)
-	# update data
-		PA3    = as.matrix(data1$PA[keep.data.id, ] )
-		label3 = as.matrix(data1$label[keep.data.id, ] )
-		flag3  = as.matrix(data1$flag[keep.data.id, ] )
-		valid.subjects.out = list(PA=PA3, label=label3, flag=flag3)
+	#-----------------------------------------
+	if (keep.7days){ #------------------(1)
+		# keep 7 days from original data	
+		keeplabel=(data1$label[,1]%in%keep.person.id)
+		# update data
+		valid.subjects.out = list(
+			PA   = as.matrix(data1$PA[keeplabel,]),
+			label= data1$label[keeplabel,],
+			flag = as.matrix(data1$flag[keeplabel,])
+			)
+	} #----------------------------------------(1)		
+
+	if (!keep.7days){ #------------------(2)	
+		# keep only valid days (< 7days) 
+		keeplabel = (data2$label[,1]%in%keep.person.id)
+	  # update data		
+		valid.subjects.out = list(
+			PA 	 = as.matrix(data2$PA[keeplabel, ]), 
+			label= data2$label[keeplabel, ], 
+			flag = as.matrix(data2$flag[keeplabel, ])
+				)
+	} #-------------------------------------------(2)	
+		
+	names(valid.subjects.out$label)[1:2] = c("id","day")
 	# Summary
-		print(paste("Selected persons are", length(keep.person.id)) )
+	print(paste("Selected persons are", length(keep.person.id)) )
 	# return
 	return(valid.subjects.out)
 	}

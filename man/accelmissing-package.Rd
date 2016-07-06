@@ -12,8 +12,8 @@ This packages provides a statistical method to impute the missing values in acce
 \tabular{ll}{
 Package: \tab accelmissing\cr
 Type: \tab Package\cr
-Version: \tab 1.0\cr
-Date: \tab 2016-03-25 \cr
+Version: \tab 1.1\cr
+Date: \tab 2016-07-05 \cr
 License: \tab GPL (>=2)\cr
 }
 }
