@@ -3,7 +3,7 @@
 # 05/21/2016: valid.subjects - keep.7days=TRUE/FALSE arguement is included 
 # 05/23/2016: missing.rate - translate the missing rate to wearing hours, and create more outputs (table.wh, label)
 # 07/05/2016: accel.impute - add demo.include=TRUE/FALSE argument
-
+# 03/25/2018: no change but author email address, require() library() should be not included in the code because the package already depends on pscl and mice. Including it will give some errors in package building process
 ########################################################
 # accel.impute() performs multiple imputations for accelerometer data
 # input: PA, label, flag, demo
@@ -347,7 +347,7 @@ return(impvec)
 }
 ###############################################
 mice.impute.2l.zipln <- function (y, ry, x, type, K, zs=zs ){
-#require(pscl) ; if (!require(pscl)){stop("pscl package must be installed!")}
+# require(pscl) ; if (!require(pscl)){stop("pscl package must be installed!")}
 Y <- y[ry]
 X  <- x[ry,  ]
 X <- data.frame(X) 
