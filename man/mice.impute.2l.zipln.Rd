@@ -7,7 +7,7 @@ Imputation by Bayesian ZIPLN model.
 Imputes univariate missing data using Bayesian model under the zero-inflated Poisson Log-normal (ZIPLN) distribution.
 }
 \usage{
-mice.impute.2l.zipln(y, ry, x, type, K, zs = zs)
+mice.impute.2l.zipln(y, ry, x, wy=NULL, type, K, zs = zs)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -19,6 +19,9 @@ Vector of missing data pattern (\code{FALSE}=missing, \code{TRUE}=observed)
 }
   \item{x}{
 Matrix (n by p) of complete covariates
+}
+  \item{wy}{
+defalut wy=NULL
 }
   \item{type}{
 If \code{type=1}, covariates are included in both logit and poisson. \cr

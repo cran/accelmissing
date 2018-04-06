@@ -7,7 +7,7 @@ Imputation by PMM under ZIPLN model.
 Imputes univariate missing data using the predictive mean matching (PMM) under the zero-inflated Poisson Log-normal (ZIPLN) model.
 }
 \usage{
-mice.impute.2l.zipln.pmm(y, ry, x, type, K, zs = zs, D)
+mice.impute.2l.zipln.pmm(y, ry, x, wy=NULL, type, K, zs = zs, D)
 }
 \arguments{
   \item{y}{
@@ -18,6 +18,9 @@ Vector of missing data pattern (\code{FALSE}=missing, \code{TRUE}=observed)
 }
   \item{x}{
 Matrix (n by p) of complete covariates
+}
+  \item{wy}{
+defalut wy=NULL
 }
   \item{type}{
 If \code{type=1}, covariates are included in both logit and poisson models. \cr
