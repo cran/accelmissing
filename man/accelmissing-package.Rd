@@ -3,22 +3,24 @@
 \alias{accelmissing}
 \docType{package}
 \title{
-accelmissing
+Missing Value Imputation for Accelerometer Data
 }
 \description{
-This packages provides a statistical method to impute the missing values in accelerometer data. The methodology includes both parametric and semi-parametric multiple imputations under the zero-inflated poisson lognormal model. It also provides multiple functions to preprocess the accelerometer data previous to the missing data imputation. These includes detecting wearing and nonwearing time, selecting valid days and subjects, and creating plots. 
+We present a statistical method for imputing missing values in accelerometer data. The methodology includes both parametric and semi-parametric multiple imputation under the zero-inflated Poisson lognormal model. It also offers several functions to preprocess accelerometer data before imputation. These include detecting wear and non-wear time, selecting valid days and subjects, and generating plots.
 }
 \details{
 \tabular{ll}{
 Package: \tab accelmissing\cr
 Type: \tab Package\cr
-Version: \tab 1.4\cr
-Date: \tab 2018-04-04 \cr
+Version: \tab 2.2\cr
+Date: \tab 2025-05-30 \cr
 License: \tab GPL (>=2)\cr
 }
 }
 \author{
-Jung Ae Lee <julee@uark.edu>
+Jung Ae Lee <jungae.lee@umassmed.edu>
+
+Maintainer: Jung Ae Lee <jungaeleeb@gmail.com>
 }
 \references{
 Lee JA, Gill J (2016). Missing value imputation for physical activity data measured by accelerometer. Statistical Methods and Medical Research.

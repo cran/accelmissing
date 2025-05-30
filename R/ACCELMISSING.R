@@ -3,65 +3,48 @@
 # 05/21/2016: valid.subjects - keep.7days=TRUE/FALSE arguement is included 
 # 05/23/2016: missing.rate - translate the missing rate to wearing hours, and create more outputs (table.wh, label)
 # 07/05/2016: accel.impute - add demo.include=TRUE/FALSE argument
-# 03/25/2018: no change but author email address, require() library() should be not included in the code because the package already depends on pscl and mice. Including it will give some errors in package building process (v1.2)
-# 03/28/2018: missing.rate - as.matrix() for flag, PA, (v1.3)
-# 03/31/2018: accel.impute - as.data.frame() for label and demo; 2l.zip.pmm, 2l.zipln, 2l.zipln.pmm,  =>  wy=NULL is included (v1.4)
-########################################################
+# 03/25/2018: no change but author email address, require() library() should be not included in the code because the package already depends on pscl and mice. Including it will give some errors in package building process
+# 05/29/2025: update according to mice package input argument - add wy=NULL
+# mice.impute.2l.zip.pmm <- function (y, ry, x, type, K, D ) # before fix
+# mice.impute.2l.zip.pmm <- function (y, ry, x, wy=NULL, type, K, D ) # after fix
+
+#---------------------------------------- #
 # accel.impute() performs multiple imputations for accelerometer data
 # input: PA, label, flag, demo
 # output: multiple datasets with imputations (m=5 as a default)
-########################################################
-accel.impute <- function(PA, label, flag, demo=NA, method="zipln", time.range=c("09:00","20:59"), K=3, D=5, mark.missing=0, thresh=10000, graph.diagnostic=TRUE,  seed=1234, m=5, maxit=6){
+#-----------------------------------------#
+# default input
+# PA = data$PA; label= data$label; flag = data$flag; demo=NA; method = "ziplin.pmm"; time.range=c("09:00","20:59"); K = 3;  D = 5; mark.missing = 0; thresh = 10000; seed = 1234; m = 5; maxit = 6
 
-# input required
-	PA = as.matrix(PA)
-	label = as.data.frame(label) # data.frame is fine
-	flag = as.matrix(flag)  # data frame is not fine
-	#cat("Dimension of data: ","PA", dim(PA), "...label", dim(label), "...flag", dim(flag))
+accel.impute <- function(PA, label, flag, demo=NA, method="zipln.pmm", time.range=c("09:00","20:59"),  K=3, D=5, mark.missing=0, thresh=10000, graph.diagnostic=TRUE,  seed=1234, m=5, maxit=6, demo.include=FALSE ){
 
-# optional data	: demo=NA is default
-	if ( is.null(nrow(demo))) { demo.include=FALSE; print("no demo...") }
-	if (!is.null(nrow(demo))) { demo.include=TRUE ; demo = as.data.frame(demo)}
-
-# wearing/nonwearing mark
+ # wearing/nonwearing mark
 	nw = mark.missing
-	w = abs(1-nw)
-
+	 w = abs(1-nw)
 # time sequence
-		start.time =as.POSIXct("2015-01-01")
-		seq.time = seq.POSIXt(start.time, length.out=1440, by="min")
-		min.seq = format(seq.time,"%H:%M")
-		
-# convert time.range to minute index
-		min.range = which(min.seq %in% time.range)
-		daytime = min.range[1]:min.range[2]  # minute index of daytime
-		# cat("Imputation range (daytime in minute):", min.range[1], min.range[2])
-
-# careful with threshold
+		start.time = as.POSIXct("2015-01-01")
+	  	seq.time = seq.POSIXt(start.time, length.out=1440, by="min")
+		   min.seq = format(seq.time,"%H:%M")
+# preliminary
+ 	daytime = which(min.seq==time.range[1]):which(min.seq==time.range[2])
  	PA[PA>=thresh] = thresh  # it might be done in previous steps, just in case
-	# print(paste("Is thresh=",thresh, "reasonable for your device? Otherwise change the option.") )
+
+# Would you like to include the demographic data?
+	# note: demo is the demographic data by subject
+	if (!demo.include)	demo=NA    # demo=NA if demo.include=FALSE 
 	
-# Demographic data  
-# note: demo is the demographic data by subject
-	if (demo.include){#----------------------------------------------
-
-	# update label with demographic information
-	key1 = colnames(label)[1]
-	key2 = colnames(demo)[1]	
-	labelDemo = merge(label, demo, by.x= key1, by.y= key2, all.x= TRUE)
-	demo.daily = labelDemo[, colnames(demo) ]
-	# # Alternative code
-	# nsubject = nrow(demo) # 184 subject
-	# nday = length(unique(label[, 2])) # num of days per subject - 7 or 14 days
-	# demo.daily = as.data.frame(matrix(0, nday*nsubject, ncol(demo)))
-	# for (i in 1:ncol(demo)) demo.daily[, i] = rep(demo[, i], each=nday) # subject i
-	# colnames(demo.daily) = colnames(demo)
-
-		# error messages: 
-		if (nrow(PA)!=nrow(demo.daily)) {stop("Dimension does not match! Please check the demographic data.")}
-		if (sum(is.na(demo)) != 0) {stop("There are missing values (NA) in demo. Imputation is needed, otherwise set 'demo.include=FALSE'.")}
-		
-	} #--------------------------------------------------------------------
+	if (demo.include){#-------------------------------(a)
+			if ( is.null(nrow(demo)) ) {demo.include=FALSE }else{ ###
+			nday = length(unique(label[, 2])) # num of days per subject - 7 or 14 days
+			demo.daily = data.frame(matrix(0, nday*nrow(demo), ncol(demo)))
+			for (i in 1:ncol(demo)) demo.daily[, i] = rep(demo[, i], each=nday)
+			colnames(demo.daily) = colnames(demo)
+			# error messages: 
+			if ( nrow(PA)!=nrow(demo.daily)) {stop("Dimension does not match! Please check the demographic data.")}
+			if ( sum(is.na(demo)) != 0) {stop("There are missing values (NA) in demo. Imputation is needed, otherwise set 'demo.include=FALSE'.")}
+			}###
+	} #------------------------------------------ (a)
+	
 	
 	# create the variable of weekday=1 , weekend=0
 	daylabel=label[, 2]  # l=Sunday,...,7=Saturday
@@ -74,13 +57,15 @@ accel.impute <- function(PA, label, flag, demo=NA, method="zipln", time.range=c(
 			}else{
 			xmat = data.frame(wk)	
 			}
- # packages 
-	#require(mice);  if (!require(mice)) {stop("mice package must be installed.")}	
-	#require(pscl);   if (!require(pscl)) {stop("pscl package must be installed.")}	
-###############################################
- # initial imputation with zip pmm   <--- first iteration 
- ###############################################
- print("First iteration starts with zip + pmm... ")
+
+	# packages - automatically install under the package. 
+	# require(mice)  # exclude this line for package upload
+	# require(pscl)
+ 
+ ## initial imputation with cart ############################
+ #   <------ first iteration 
+
+ print("First iteration starts with cart... ")
  intimp = PA  
  for (s in daytime) { #===========================(s)
  	cat(paste(min.seq[s],"...") ) # print the process
@@ -88,29 +73,30 @@ accel.impute <- function(PA, label, flag, demo=NA, method="zipln", time.range=c(
 	if (s==daytime[1]){# set initial value
 		y0=PA[, t0] ;	 y0[flag[, t0]==nw] = NA
 		icd.y0 = data.frame(y0, xmat)
-		imp.y0 = mice(icd.y0, seed=seed, method = "pmm", maxit=maxit, m=1, printFlag=FALSE) 
+		imp.y0 = mice(icd.y0, seed=seed, method="pmm", maxit=maxit, m=1, printFlag=FALSE) 
 		cd.y0 = complete(imp.y0, 1)$y0 
 		}else{ cd.y0 = cd.y1 } # update 	
 	y1 =PA[, t1]
 	r1 =(flag[, t1]==w)   # wearing=T, missing=F
 	y1[!r1] = NA			# missing to NA
 	icd.y1 = data.frame(y1, ln.y0 = log(cd.y0+1), xmat) # (L1 L1)	
-	imp.y1 = mice(icd.y1, seed=seed, method = "2l.zip.pmm", maxit=maxit, m=1, printFlag=FALSE)
+	imp.y1 = mice(icd.y1, seed=seed, method="cart", maxit=maxit, m=1, printFlag=FALSE)
 	cd.y1 = complete(imp.y1)$y1 # one complete data of y1
 	if (graph.diagnostic==TRUE)  {
 		plot(log(cd.y1+1), log(cd.y0+1), col=ifelse(r1,3,2), pch=ifelse(r1,1,8) , xlab=min.seq[t1], ylab=min.seq[t0], main="log(count+1)" );	legend("topleft", legend=c("observed","imputed"), col=c(3,2), pch=c(1,8) )
 		}
-	#---------------------------------------------------------------	
+	# save data
 	intimp[, t1] = complete(imp.y1)$y1  # save data	
 	# for (j in 1:m) intimp[[j]][, t1] = complete(imp.y1, j)$y1  # save data 
  }#=========================================(s)
  
- ###############################################
- # actual imputation with zipln  <--- second iteration 
- ###############################################
-print("done.") 
-print( paste("Preparing the zipln imputation with K=", K,"lag and lead"))
-# pre-step with K
+ 
+ ## actual imputation with zipln, zipln.pmm or zip.pmm #################
+ # <--- second iteration 
+
+print("Second iteration starts with zipln  ... ")
+	# pre-step with K
+		print("Preparing the zipln imputation with K: ")
 		zmat = matrix(NA, nrow(intimp), ncol(intimp) )
 		for ( s in (daytime[1]-K):(tail(daytime,1)+K) ){# ----- (zmat)
 			yt= round(intimp[, s])
@@ -121,12 +107,10 @@ print( paste("Preparing the zipln imputation with K=", K,"lag and lead"))
 	    	cat(".", s)  
 		}# ----------------------- (zmat)	
 	# create empty datalist	
-	listimp = vector("list", m) 
-	names(listimp) = paste("imp", 1:m, sep="")
-	for (k in 1:m) listimp[[k]] = intimp   
+	listimp = vector("list", m) ;  names(listimp) = paste("imp", 1:m, sep="");  for (k in 1:m) listimp[[k]] = intimp   
+	
+	# method.nam = "zipln.pmm"
 
-print("done") 
-print(paste("Second iteration starts with", method," ... "))
 for (s in daytime){ #==============================(s)
 	cat(paste(min.seq[s],"...") ) # print the process
 	if (s==daytime[1]){# set initial value
@@ -139,23 +123,21 @@ for (s in daytime){ #==============================(s)
 	colnames(ytmat) = c( paste("yt_", K:1, sep=""), "yt", paste("yt.", 1:K, sep=""))
 	colnames(ytmat1) = colnames(ytmat)
 	ry     = (flag[, s]==w)       # wearing=T, missing=F		
-	#------------------------------------------
+	#------------------------------------------#
 	zs = zmat[ , tvec] 
 	colnames(zs) = c( paste("zt_", K:1, sep=""), "zt" ,paste("zt.", 1:K, sep="") )
-	#------------------------------------------
+	#------------------------------------------#
 	icd.yt = data.frame(yt=ytmat1[, (K+1)], xmat, ln.yt_1 = log(cd.yt_1+1)) # (L1 CK)
 		ini = mice(icd.yt, seed=seed, maxit=0) #initiate
 		predmat = ini$predictorMatrix # predictor matirix
-		predmat[1, "ln.yt_1"] = 3  # lag-term is only included in logit (type=3): type=1 (both), type=2(count only), type=3 (zero only)
-	# method = 2l.zipln or 2l.zipln.pmm
-	if (method=="zipln") { imp.yt = mice(icd.yt, seed=seed, method="2l.zipln", 
-		predictorMatrix=predmat, maxit=maxit, m=m, K=K, zs=zs, printFlag=FALSE)}
-	if (method=="zipln.pmm"){ imp.yt = mice(icd.yt, seed=seed, method="2l.zipln.pmm",
-		predictorMatrix=predmat, maxit=maxit, m=m, K=K, zs=zs, D=D, printFlag=FALSE)}
-    #---------------------------------------------------------------
+		predmat[1, "ln.yt_1"] = 3  # only include in logit (zero only): type=1 (both), type=2(count only), type=3 (zero only)
+	method.nam = paste("2l.", method, sep="")  # zipln or zipln.pmm
+	if (method.nam=="2l.zipln") { imp.yt = mice(icd.yt, seed=seed, method=method.nam, maxit=maxit, m=m,  predictorMatrix=predmat, K=K, zs=zs, printFlag=FALSE)}
+	if (method.nam=="2l.zipln.pmm"){ imp.yt = mice(icd.yt, seed=seed, method=method.nam, maxit=maxit, m=m, predictorMatrix=predmat, K=K, zs=zs, D=D, printFlag=FALSE)	}
+    #---------------------------------------------------------------#
     cd.yt = complete(imp.yt, m)$yt # one complete data of yt
     if (graph.diagnostic == TRUE){ plot(log(cd.yt+1), log(cd.yt_1+1), col=ifelse(r1,3,2), pch=ifelse(r1,1,8), xlab=min.seq[s], ylab=min.seq[s-1], main="log(count+1)" ); legend("topleft", legend=c("observed","imputed"), col=c(3,2), pch=c(1,8) ) }
-	#---------------------------------------------------------------
+	#---------------------------------------------------------------#
 	for (j in 1:m) listimp[[j]][, s] = complete(imp.yt, j)$yt  # save data
 }#==============================================(s)	
 
@@ -163,12 +145,13 @@ print(paste("Imputation complete!", m, "datasets are created."))
 return(listimp)
 
  }# end of the function 
-#############################################################
-##########################################
+# end of accel.impute ############################
+
+#--------------------------------------------------#
 # accel.plot.7days() provides daily activity plots 
 # input: PA, label, flag
 # output: 7 days plots of a person
-##########################################
+# -------------------------------------------------#
 accel.plot.7days <- function(PA, label, flag, time.range=c("00:00","23:59"),  mark.missing=0, axis.time=TRUE, save.plot=FALSE, directory.plot=getwd() ){
 
 	print("*** Plot ***")
@@ -240,11 +223,12 @@ accel.plot.7days <- function(PA, label, flag, time.range=c("00:00","23:59"),  ma
 	setwd(current.dir)
 
 }#end of function	
-##########################################
+
+#----------------------------------------------#
 # creat.flag() produces a missing flag matrix 
 # input: PA
 # output: flagmat, with the same dimension of PA
-##########################################
+#-----------------------------------------------#
 
 	create.flag <- function(PA, window=20, mark.missing=0 ) {
 			print("*** Create missing flag matrix ***")
@@ -281,9 +265,18 @@ accel.plot.7days <- function(PA, label, flag, time.range=c("00:00","23:59"),  ma
  	return(flagmat)
  	} 
  	
- #############################################
+## mice functions ##################################
+	
+	#------------------------------------------------------#
+	# References: 
+	# van Buuren S, Groothuis-Oudshoorn K. mice: Multivariate imputations by chained equations in r. Journal of Statistical Software  2011, 
+	# Kleinke K, Reinecke J. Multiple imputation of incomplete zero-infated count data. Statistica Neerlandica  2013
+	# mice R package, May 27, 2025 version 3.18.0
+	#------------------------------------------------------#
+	
+#----------------------------(1)---------------------------#
 mice.impute.2l.zip.pmm <- function (y, ry, x, wy=NULL, type, K, D ){
-# require(pscl) ; if (!require(pscl)){stop("pscl package must be installed!")}
+# require(pscl) 
 Y <- y[ry]
 X  <- x[ry,]
 X <- data.frame(X) 
@@ -310,7 +303,7 @@ fit$coefficients$zero <-
 b.star[(length(fit$coefficients$count)+1):length(b.star)]
 newdata <- data.frame(X=x[!ry,])
 colnames(newdata)<- nam 
-#---- zip+pmm -----
+#---- zip+pmm -----#
 yhatmis = predict(fit, newdata=newdata, na.action=na.pass)
 impvec = 1:length(yhatmis)
 for (j in 1:length(yhatmis)){ 
@@ -321,13 +314,11 @@ for (j in 1:length(yhatmis)){
     impvec[j] = a.draw
 }
 return(impvec)
-#############################################
-# References: (1) van Buuren S, Groothuis-Oudshoorn K. mice: Multivariate imputations by chained equations in r. Journal of Statistical Software  2011, (2) Kleinke K, Reinecke J. Multiple imputation of incomplete zero-infated count data. Statistica Neerlandica  2013
-#############################################
 }
-######################################################
+
+#--------------------------(2)-------------------------#
 mice.impute.2l.zipln.pmm <- function (y, ry, x, wy=NULL, type, K, zs=zs, D ){
-# require(pscl); if (!require(pscl)){stop("pscl package must be installed!")}
+# require(pscl)
 Y <- y[ry]
 X  <- x[ry,  ]
 X <- data.frame(X) 
@@ -360,7 +351,7 @@ fit$coefficients$zero <-
 b.star[(length(fit$coefficients$count)+1):length(b.star)]
 newdata <- data.frame(X=x[!ry,])
 colnames(newdata)<- nam 
-#---- zipln+pmm -----
+#---- zipln+pmm -----#
 yhatmis = predict(fit, newdata=newdata, na.action=na.pass)*(exp(et)[!ry])
 impvec = 1:length(yhatmis)
 for (j in 1:length(yhatmis)){ 
@@ -371,13 +362,11 @@ for (j in 1:length(yhatmis)){
     impvec[j] = a.draw
 }
 return(impvec)
-#############################################
-# References: (1) van Buuren S, Groothuis-Oudshoorn K. mice: Multivariate imputations by chained equations in r. Journal of Statistical Software  2011, (2) Kleinke K, Reinecke J. Multiple imputation of incomplete zero-infated count data. Statistica Neerlandica  2013
-#############################################
 }
-###############################################
+
+#-------------------------------(3)----------------------------------#
 mice.impute.2l.zipln <- function (y, ry, x, wy=NULL, type, K, zs=zs ){
-# require(pscl) ; if (!require(pscl)){stop("pscl package must be installed!")}
+# require(pscl) 
 Y <- y[ry]
 X  <- x[ry,  ]
 X <- data.frame(X) 
@@ -421,23 +410,24 @@ lam.star = predict(fit, newdata=newdata, type="count", na.action=na.pass)
 # impuation
 impvec[pivec==1] = lam.star[pivec==1]*(exp(et)[!ry][pivec==1])
 return(impvec)
-#############################################
-# References: (1) van Buuren S, Groothuis-Oudshoorn K. mice: Multivariate imputations by chained equations in r. Journal of Statistical Software  2011, (2) Kleinke K, Reinecke J. Multiple imputation of incomplete zero-infated count data. Statistica Neerlandica  2013
-#############################################
+
 }
-#################################################### 
+
+## end of mice functions ########################
+
+#------------------------------------------------------------#
 # missing.rate() computes missing rate based on the missing flag
 # input: label, flag
 # output: list with total (total missing rate) and table (missing rate table by subject)
-####################################################
- 	missing.rate <- function(label, flag, mark.missing=0, time.range=c("09:00","20:59")){
+#------------------------------------------------------------#
+missing.rate <- function(label, flag, mark.missing=0, time.range=c("09:00","20:59")){
  		
  	# wearing/nonwearing mark
 		nw = mark.missing
 		w = abs(1-nw)
 	# input data
-		label=as.matrix(label)
-		flag =as.matrix(flag)
+		label=label
+		flag = flag
    	# time sequence
 		start.time =as.POSIXct("2015-01-01")
 		seq.time = seq.POSIXt(start.time, length.out=1440, by="min")
@@ -460,22 +450,23 @@ return(impvec)
 			mrate.7d[i, dayjs] = apply(flagi==nw, 1, mean)
 		}#----------(*)
 		colnames(mrate.7d) =1:7
-		row.names(mrate.7d) = unique(label[,1])
+		rownames(mrate.7d) = unique(label[,1])
 	# compute the missing rate to the wearing hours
 		wh.7d = (1-mrate.7d)*(length(duration)/60)
 	# update the label with wh	
 		mrate.vec = apply(flag.duration==nw, 1, mean)
 		wh.vec = (1-mrate.vec)*(length(duration)/60)
-		mylabel=as.data.frame(label)
-		colnames(mylabel)[1:2] = c("id","day")
-		mylabel$wh = round(matrix(t(wh.vec), nrow(mylabel),1), 3)
-	return(list(total=total, table=round(mrate.7d,3), table.wh=round(wh.7d,3), label=mylabel))
- 	}
-#######################################################
+		label=as.data.frame(label)
+		colnames(label)[1:2] = c("id","day")
+		label$wh = round(matrix(t(wh.vec), nrow(label),1), 3)
+	return(list(total=total, table=round(mrate.7d,3), table.wh=round(wh.7d,3), label=label))
+}
+
+#-----------------------------------------------------------#
 # valid.days() selects the valid days that has sufficient wearing times
 # input: PA, label, flag
 # output: list with the updated PA, label and flag  
-#######################################################
+#------------------------------------------------------------#
 valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"), mark.missing=0){
 	print("*** Complete Days Filtering ***")
 	# wearing/nonwearing mark
@@ -488,9 +479,9 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 	# time range
 		duration = which(min.seq==time.range[1]):which(min.seq==time.range[2])
 	# input data
-		PA = as.matrix(PA)
-		label = as.matrix(label)
-		flag = as.matrix(flag)	
+		PA = PA
+		label = label
+		flag = flag	
 	# missing rate before filtering data
 		flag.duration = flag[ , duration]
 		mrate = round(mean(flag.duration==nw), 2)
@@ -500,10 +491,10 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 		wearmin = wear.hr*60
 		flag.sum = apply(flag.duration==w, 1, sum)
 		flag.id  = which(flag.sum > wearmin)
-	# update data - matrix
-		PA2 = PA[flag.id, ]
+	# update data
+		PA2 = as.matrix(PA[flag.id, ])
 		label2 = label[flag.id,]
-		flag2  = flag[flag.id, ]
+		flag2  = as.matrix(flag[flag.id, ])
 		valid.days.out = list(PA=PA2, label=label2, flag=flag2)
 	# summary
 	print(paste("Total days are reduced to", dim(PA2)[1], "from", dim(PA)[1] ))
@@ -513,12 +504,12 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 		return(valid.days.out)	
 	}
 
-####################################################################
+#------------------------------------------------------------#
 # valid.subjects() select the valid subjects that have sufficient valid days in a week
 # input: data1- list with PA, label, flag from the original data with many missing values
 #			 data2- list with PA, label, flag from the output of valid.days
 # output: list with the updated PA, label, and flag			
-##############################################################
+#------------------------------------------------------------#
 	valid.subjects <- function(data1, data2, valid.days=3, valid.week.days=NA, valid.weekend.days=NA,  mark.missing=0, keep.7days=TRUE){
 	print("*** Select Data by Subject ***")
 	# wearing/nonwearing mark
@@ -540,7 +531,7 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 		weekend.person = as.numeric(tapply(weekend.label, person.label, FUN=sum))
 	
 	# filtering 
-	#----------------------------------------------
+	#----------------------------------------------#
 	if ( (length(valid.days)==0) || 
 		 (is.na(valid.days)&is.na(valid.week.days)&is.na(valid.weekend.days)) ){
 		stop("Input argument valid.days= is required.")
@@ -581,9 +572,9 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 		print(paste("Select only the subjects that include at least", 
 			valid.weekend.days, "complete (valid) weekends."))											  
 		}	
-	#-----------------------------------------		
+	#-----------------------------------------#	
 	N.person = length(keep.person.id)  
-	#-----------------------------------------
+	#-----------------------------------------#
 	if (keep.7days){ #------------------(1)
 		# keep 7 days from original data	
 		keeplabel=(data1$label[,1]%in%keep.person.id)
@@ -612,12 +603,13 @@ valid.days <- function(PA, label, flag, wear.hr=10, time.range=c("09:00","20:59"
 	# return
 	return(valid.subjects.out)
 	}
-#####################################################################	 	
+
+#------------------------------------------------------------# 	
 # wear.time.plot() displays the propotion of wearing over time a day among the daily profiles
 # Also, based on that, it computes the standard measurement day
 # input: PA, label, flag
 # output: plot with the proportion of wearing over time
-#####################################################################	 
+#------------------------------------------------------------#
 	wear.time.plot <- function(PA, label, flag, mark.missing=0){
 	print("*** Wearing proportion over time ***")
 	

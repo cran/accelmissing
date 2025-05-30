@@ -48,10 +48,10 @@ A vector of length \code{nmis} with imputations
 Jung Ae Lee <jungaeleeb@gmail.com>
 }
 \note{
-This function runs by the argument in \code{mice(..., method="2l.zip.pmm",...)}
+This function is called when you set \code{accel.impute(..., method = "zip.pmm"}; internally, it then calls \code{mice(..., method="2l.zip.pmm",...)}.
 }
 \seealso{
-\code{\link{mice}}, \code{\link{mice.impute.2l.zipln.pmm}}
+\link[mice]{mice}, \link{accel.impute}  %The function mice() in the mice package{}
 }
 \keyword{ mice }
 \keyword{ predictive mean matching }% __ONLY ONE__ keyword per line

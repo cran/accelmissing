@@ -12,7 +12,7 @@ Imputed Data example from 2003-4 National Health and Nutrition Examination Surve
 List with multiple matrix objects. \code{accelimp} includes a single dataset a result of \code{accel.impute(..., m=1,...)}. You may produce multiple datasets by setting m=5 (default).
 \itemize{ 	
 \item \code{accelimp$imp1}: matrix
-\item[]{...}
+\item \code{...}
 \item \code{accelimp$imp5}: matrix
 } %itemize
 } %format
