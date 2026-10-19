@@ -1,12 +1,4 @@
-# update:
-# 05/14/2016: missing.rate - fix the table allowing NA for 7 days
-# 05/21/2016: valid.subjects - keep.7days=TRUE/FALSE arguement is included 
-# 05/23/2016: missing.rate - translate the missing rate to wearing hours, and create more outputs (table.wh, label)
-# 07/05/2016: accel.impute - add demo.include=TRUE/FALSE argument
-# 03/25/2018: no change but author email address, require() library() should be not included in the code because the package already depends on pscl and mice. Including it will give some errors in package building process
-# 05/29/2025: update according to mice package input argument - add wy=NULL
-# mice.impute.2l.zip.pmm <- function (y, ry, x, type, K, D ) # before fix
-# mice.impute.2l.zip.pmm <- function (y, ry, x, wy=NULL, type, K, D ) # after fix
+# 10-19-2025 updated by Jung Ae Lee
 
 #---------------------------------------- #
 # accel.impute() performs multiple imputations for accelerometer data
@@ -74,20 +66,20 @@ accel.impute <- function(PA, label, flag, demo=NA, method="zipln.pmm", time.rang
 		y0=PA[, t0] ;	 y0[flag[, t0]==nw] = NA
 		icd.y0 = data.frame(y0, xmat)
 		imp.y0 = mice(icd.y0, seed=seed, method="pmm", maxit=maxit, m=1, printFlag=FALSE) 
-		cd.y0 = complete(imp.y0, 1)$y0 
+		cd.y0 = mice::complete(imp.y0, 1)$y0 
 		}else{ cd.y0 = cd.y1 } # update 	
 	y1 =PA[, t1]
 	r1 =(flag[, t1]==w)   # wearing=T, missing=F
 	y1[!r1] = NA			# missing to NA
 	icd.y1 = data.frame(y1, ln.y0 = log(cd.y0+1), xmat) # (L1 L1)	
 	imp.y1 = mice(icd.y1, seed=seed, method="cart", maxit=maxit, m=1, printFlag=FALSE)
-	cd.y1 = complete(imp.y1)$y1 # one complete data of y1
+	cd.y1 = mice::complete(imp.y1)$y1 # one complete data of y1
 	if (graph.diagnostic==TRUE)  {
 		plot(log(cd.y1+1), log(cd.y0+1), col=ifelse(r1,3,2), pch=ifelse(r1,1,8) , xlab=min.seq[t1], ylab=min.seq[t0], main="log(count+1)" );	legend("topleft", legend=c("observed","imputed"), col=c(3,2), pch=c(1,8) )
 		}
 	# save data
-	intimp[, t1] = complete(imp.y1)$y1  # save data	
-	# for (j in 1:m) intimp[[j]][, t1] = complete(imp.y1, j)$y1  # save data 
+	intimp[, t1] = mice::complete(imp.y1)$y1  # save data	
+	# for (j in 1:m) intimp[[j]][, t1] = mice::complete(imp.y1, j)$y1  # save data 
  }#=========================================(s)
  
  
@@ -135,10 +127,10 @@ for (s in daytime){ #==============================(s)
 	if (method.nam=="2l.zipln") { imp.yt = mice(icd.yt, seed=seed, method=method.nam, maxit=maxit, m=m,  predictorMatrix=predmat, K=K, zs=zs, printFlag=FALSE)}
 	if (method.nam=="2l.zipln.pmm"){ imp.yt = mice(icd.yt, seed=seed, method=method.nam, maxit=maxit, m=m, predictorMatrix=predmat, K=K, zs=zs, D=D, printFlag=FALSE)	}
     #---------------------------------------------------------------#
-    cd.yt = complete(imp.yt, m)$yt # one complete data of yt
+    cd.yt = mice::complete(imp.yt, m)$yt # one complete data of yt
     if (graph.diagnostic == TRUE){ plot(log(cd.yt+1), log(cd.yt_1+1), col=ifelse(r1,3,2), pch=ifelse(r1,1,8), xlab=min.seq[s], ylab=min.seq[s-1], main="log(count+1)" ); legend("topleft", legend=c("observed","imputed"), col=c(3,2), pch=c(1,8) ) }
 	#---------------------------------------------------------------#
-	for (j in 1:m) listimp[[j]][, s] = complete(imp.yt, j)$yt  # save data
+	for (j in 1:m) listimp[[j]][, s] = mice::complete(imp.yt, j)$yt  # save data
 }#==============================================(s)	
 
 print(paste("Imputation complete!", m, "datasets are created."))
@@ -278,7 +270,7 @@ accel.plot.7days <- function(PA, label, flag, time.range=c("00:00","23:59"),  ma
 mice.impute.2l.zip.pmm <- function (y, ry, x, wy=NULL, type, K, D ){
 # require(pscl) 
 Y <- y[ry]
-X  <- x[ry,]
+X  <- x[ry, , drop = FALSE]
 X <- data.frame(X) 
 nam <- colnames(X)
 b <- which(type==1)
@@ -301,7 +293,7 @@ fit$coefficients$count <-
 b.star[1:length(fit$coefficients$count)] 
 fit$coefficients$zero <-
 b.star[(length(fit$coefficients$count)+1):length(b.star)]
-newdata <- data.frame(X=x[!ry,])
+newdata <- data.frame(x[!ry, , drop = FALSE])
 colnames(newdata)<- nam 
 #---- zip+pmm -----#
 yhatmis = predict(fit, newdata=newdata, na.action=na.pass)
@@ -320,7 +312,7 @@ return(impvec)
 mice.impute.2l.zipln.pmm <- function (y, ry, x, wy=NULL, type, K, zs=zs, D ){
 # require(pscl)
 Y <- y[ry]
-X  <- x[ry,  ]
+X  <- x[ry, , drop = FALSE]
 X <- data.frame(X) 
 nam <- colnames(X)
 b <- which(type==1)
@@ -349,7 +341,7 @@ fit$coefficients$count <-
 b.star[1:length(fit$coefficients$count)] 
 fit$coefficients$zero <-
 b.star[(length(fit$coefficients$count)+1):length(b.star)]
-newdata <- data.frame(X=x[!ry,])
+newdata <- data.frame(x[!ry, , drop = FALSE])
 colnames(newdata)<- nam 
 #---- zipln+pmm -----#
 yhatmis = predict(fit, newdata=newdata, na.action=na.pass)*(exp(et)[!ry])
@@ -368,7 +360,7 @@ return(impvec)
 mice.impute.2l.zipln <- function (y, ry, x, wy=NULL, type, K, zs=zs ){
 # require(pscl) 
 Y <- y[ry]
-X  <- x[ry,  ]
+X  <- x[ry, , drop = FALSE]
 X <- data.frame(X) 
 nam <- colnames(X)
 b <- which(type==1)
@@ -390,7 +382,7 @@ fit$coefficients$count <-
 b.star[1:length(fit$coefficients$count)] 
 fit$coefficients$zero <-
 b.star[(length(fit$coefficients$count)+1):length(b.star)]
-newdata <- data.frame(X=x[!ry,])
+newdata <- data.frame(x[!ry, , drop = FALSE])
 colnames(newdata)<- nam 
 #---- draw zeros ------#
 pi.star = predict(fit, newdata=newdata, type="zero", na.action=na.pass)

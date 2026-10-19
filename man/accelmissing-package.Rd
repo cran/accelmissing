@@ -12,8 +12,8 @@ We present a statistical method for imputing missing values in accelerometer dat
 \tabular{ll}{
 Package: \tab accelmissing\cr
 Type: \tab Package\cr
-Version: \tab 2.2\cr
-Date: \tab 2025-05-30 \cr
+Version: \tab 2.4\cr
+Date: \tab 2026-10-19 \cr
 License: \tab GPL (>=2)\cr
 }
 }

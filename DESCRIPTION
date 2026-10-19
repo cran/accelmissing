@@ -1,20 +1,22 @@
 Package: accelmissing
 Type: Package
 Title: Missing Value Imputation for Accelerometer Data
-Version: 2.2
-Date/Publication: 2025-05-30 16:30:01 UTC
+Version: 2.4
+Date: 2026-10-19
 Authors@R: c(person(
     given = "Jung Ae",
     family = "Lee",
     role = c("aut", "cre"),
     email = "jungaeleeb@gmail.com"
   ))
-Maintainer: Jung Ae Lee <jungaeleeb@gmail.com>
 Description: We present a statistical method for imputing missing values in accelerometer data. The methodology includes both parametric and semi-parametric multiple imputation under the zero-inflated Poisson lognormal model. It also offers several functions to preprocess accelerometer data before imputation. These include detecting wear and non-wear time, selecting valid days and subjects, and generating plots.
 License: GPL (>= 2)
 Depends: R (>= 3.5.0), mice, pscl
+Imports: grDevices, graphics, stats, utils
 Encoding: UTF-8
 NeedsCompilation: no
-Packaged: 2025-05-30 15:19:44 UTC; jungae
+Packaged: 2026-10-19 17:08:24 UTC; jungae
 Author: Jung Ae Lee [aut, cre]
+Maintainer: Jung Ae Lee <jungaeleeb@gmail.com>
 Repository: CRAN
+Date/Publication: 2026-10-19 17:40:02 UTC
